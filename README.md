@@ -50,8 +50,13 @@ Find all gapped extension MEMs on forward and reverse strands of length 20 or gr
 
 Install
 -------
+    git clone https://github.com/ding-lab/gclust.git
+    cd gclust
     make
-    make install
+
+Now you can put the resulting binary where your `$PATH` can find it. If you have su permissions, then
+I recommend dumping it in the system directory for locally compiled packages:
+
+    sudo mv gclust /usr/local/bin/
 
 xxx
-
