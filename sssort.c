@@ -813,3 +813,4 @@ sssort(const sauchar_t *T, const saidx_t *PA,
     *(a - 1) = i;
   }
 }
+

@@ -1,7 +1,7 @@
 
 /*
  * gclust.cpp for gclust
- * Copyright (c) 2010-2011 Beifang Niu All Rights Reserved.
+ * Copyright (c) 2014 Beifang Niu All Rights Reserved.
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -42,10 +42,8 @@ using namespace std;
 int main(int argc, char* argv[]) {
     // Version notice
     cerr <<"\nGclust version 0.5\n"<< endl;
-    // Collect parameters from the command line.
     while (1) {
-        static struct option long_options[] =
-        { 
+        static struct option long_options[] = { 
             {"minlen", 1, 0, 0}, // 0
             {"both", 0, 0, 0}, // 1
             {"nuc", 0, 0, 0}, // 2
@@ -55,14 +53,14 @@ int main(int argc, char* argv[]) {
             {"nblock", 1, 0, 0}, //6
             {"loadall", 0, 0, 0}, //7
             {"rebuild", 0, 0, 0}, //8
-            // Seed extension part
+            // Seed extension
             {"mas", 1, 0, 0}, //9
             {"umas", 1, 0, 0}, //10
             {"gapo", 1, 0, 0}, //11
             {"gape", 1, 0, 0}, //12
             {"drops", 1, 0, 0}, //13
             {"ext", 1, 0, 0}, //14
-            // Sparse step of suffix array
+            // Sparse step
             {"sparse", 1, 0, 0,}, //15
             {0, 0, 0, 0}
         };
@@ -73,7 +71,6 @@ int main(int argc, char* argv[]) {
             cerr << "Invalid parameters." << endl;
             usage(argv[0]);
         } else {
-            // Branch on long options
             switch(longindex) { 
                 case 0: min_len = atol(optarg); break;
                 case 1: rev_comp = true;	break;
@@ -91,22 +88,16 @@ int main(int argc, char* argv[]) {
                 case 12: gape = atoi(optarg) ; break;
                 case 13: drops = atoi(optarg) ; break;
                 case 14: ext = atoi(optarg) ; break;
-                // Sparse step of suffix array
+                // Sparse step
                 case 15: K = atoi(optarg) ; break;
                 default: break; 
             }
         }
     }
-    // Only using all maximal matches for clustering
     if (argc - optind != 1) usage(argv[0]);
-    if (total_threads <= 0) { 
-        cerr << "invalid number of threads specified" << endl; 
-        exit(1); 
-    }
-    // no extension when 100% match
+    if (total_threads <= 0) { cerr << "invalid number of threads specified" << endl; exit(1); }
     if (MEMiden == 100) { ext = 0; }
-    // Allocate memory for multithreads
-    for (int i=0; i<total_threads; i++) {
+    for (int i = 0; i < total_threads; i++) {
         vector<match_t> matches;
         vector<mumi_unit> mumis;
         matchlist.push_back(matches);
@@ -114,94 +105,64 @@ int main(int argc, char* argv[]) {
         matchlist[i].reserve(MAX_THREADCONTAINER);
         mumilist[i].reserve(MAX_THREADCONTAINER);
     }
-    // Genome file
     string ref_fasta = argv[optind]; 
-    // Load total genomes part information
     load_total_genomes(ref_fasta, totalgenomes);
-    // Load total part genomes one time
     if (loadall) load_part_genomes_all(ref_fasta, allrefseqs);
-    
-    vector<long> refdescr;
-    vector<long> startpos;
-    long chunksize;
-    long dchunk;
-    long genomes;
-    long begin = 0;
-    long cbegin = 0;
-    bool ifend=false;
-    bool clusterhit=false;
+    vector <long> refdescr, startpos;
+    long chunksize, dchunk, genomes, begin, cbegin;
+    bool ifend, clusterhit;
+    ifend = clusterhit = false;
+    begin = cbegin = 0;
     Genome tg; 
     string ref;
-    // set chunk size for clustering chunk by chunk
-    chunksize=(long)chunk*PART_BASE;
-    // Note: Take a fixed value of total genomes number
-    // Main clustering loop
+    // set chunk size
+    chunksize = (long) chunk*PART_BASE;
     while (1) {
-        if (loadall) { 
-            load_part_genomes_internal_mem(allrefseqs, refseqs, totalgenomes, cbegin, chunk, chunksize, ifend, MEMiden);
-        } else {
-            load_part_genomes_internal(ref_fasta, refseqs, totalgenomes, cbegin, chunk, chunksize, ifend, MEMiden);
-        }
-        cerr <<"\nLoad genomes: "<<refseqs.size()<< endl;
-        cerr <<"\nchunk: "<<chunk<< endl;
+        loadall ? load_part_genomes_internal_mem(allrefseqs, refseqs, totalgenomes, cbegin, chunk, chunksize, ifend, MEMiden) : load_part_genomes_internal(ref_fasta, refseqs, totalgenomes, cbegin, chunk, chunksize, ifend, MEMiden); 
+        cerr << "\nLoad genomes: " << refseqs.size() << endl;
+        cerr << "\nchunk: " << chunk << endl;
         refdescr.clear(); startpos.clear();
-        // Clear container
         ref = ""; 
-        // Make part suffix array
         make_block_ref(refseqs, ref, totalgenomes, refdescr, startpos);
-        cerr <<"Creating suffix array ......\n"<< endl;
+        cerr << "Creating suffix array ......\n" << endl;
         saa = new paraSA(ref, refdescr, startpos, true, K);
-        cerr <<"\nFinished creating suffix array ......\n"<< endl;
+        cerr << "\nFinished creating suffix array ......\n" << endl;
         genomes = refseqs.size();
-        // Part internal clustering || parallel part
         pthread_attr_t attr;  pthread_attr_init(&attr);
         pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-        vector<threads_arg> args(total_threads);
-        vector<pthread_t> thread_ids(total_threads);
-        // Initialize additional thread data
-        for (int i=0; i<total_threads; i++) {
+        vector <threads_arg> args(total_threads);
+        vector <pthread_t> thread_ids(total_threads);
+        for (int i = 0; i < total_threads; i++) {
             args[i].skip = total_threads;
             args[i].skip0 = i;
             args[i].begin = cbegin;
             args[i].part = true;
             args[i].chunk = chunk; 
         }
-        // Create joinable threads to find MEMs
-        for (int i=0; i<total_threads; i++) pthread_create(&thread_ids[i], &attr, single_thread, (void *)&args[i]);
-        // Wait for all threads to terminate
-        for (int i=0; i<total_threads; i++) pthread_join(thread_ids[i], NULL);
-        // Collect clustering information into one chunk
+        for (int i = 0; i < total_threads; i++) pthread_create(&thread_ids[i], &attr, single_thread, (void *)&args[i]);
+        for (int i = 0; i < total_threads; i++) pthread_join(thread_ids[i], NULL);
         getClusteringInfoOnepart(totalgenomes, cbegin, chunk, true, clusterhit);
-        if (ifend) { break;} // Finished
-        if ( (rebuild)&&(clusterhit) ) {
-            delete saa; ref="";
+        if (ifend) { break; }
+        if ((rebuild)&&(clusterhit)) {
+            delete saa; ref = "";
             refdescr.clear(); 
             startpos.clear();
             // Make part suffix array
             make_block_ref(refseqs, ref, totalgenomes, refdescr, startpos);
-            cerr <<"Creating suffix array ......\n"<< endl;
+            cerr << "Creating suffix array ......\n" << endl;
             saa = new paraSA(ref, refdescr, startpos, true, K);
-            cerr <<"\nFinished creating suffix array ......\n"<< endl;
+            cerr << "\nFinished creating suffix array ......\n" << endl;
         }
-        
         refseqs.clear();
-        begin = cbegin+chunk;
-        if (loadall) { dchunk=(long)allrefseqs.size(); }else{ dchunk=(long)(chunk*Nchunk); }
-        // Make alignment for last genomes
+        begin = cbegin + chunk;
+        if (loadall) { dchunk = (long) allrefseqs.size(); }else{ dchunk = (long) (chunk*Nchunk); }
         while (1) {
-            cerr <<"\n=================="<< endl;
-            cerr <<"begin alignment "<<begin<<"\n"<< endl;
-            if (loadall) { 
-                load_part_genomes_mem(allrefseqs, refseqs, totalgenomes, begin, dchunk);
-            } else {
-                load_part_genomes(ref_fasta, refseqs, totalgenomes, begin, dchunk);
-            }
-            // Parallel part
+            cerr << "\n ================== \nbegin alignment " << begin << "\n" << endl;
+            loadall ? load_part_genomes_mem(allrefseqs, refseqs, totalgenomes, begin, dchunk) : load_part_genomes(ref_fasta, refseqs, totalgenomes, begin, dchunk);
             pthread_attr_t attr;  pthread_attr_init(&attr);
             pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-            vector<threads_arg> args(total_threads);
-            vector<pthread_t> thread_ids(total_threads);
-            // Initialize additional thread data
+            vector <threads_arg> args(total_threads);
+            vector <pthread_t> thread_ids(total_threads);
             for (int i = 0; i < total_threads; i++) {
                 args[i].skip = total_threads;
                 args[i].skip0 = i;
@@ -209,28 +170,19 @@ int main(int argc, char* argv[]) {
                 args[i].part = false;
                 args[i].chunk = chunk;
             }
-            // Create joinable threads to find MEMs
             for (int i = 0; i < total_threads; i++) pthread_create(&thread_ids[i], &attr, single_thread, (void *)&args[i]);
-            // Wait for all threads to terminate
             for (int i = 0; i < total_threads; i++) pthread_join(thread_ids[i], NULL);
-            if ((long)refseqs.size()<dchunk){ 
-                getClusteringInfoOnepart(totalgenomes, begin, (long)refseqs.size(), false, clusterhit); 
-            } else {
-                getClusteringInfoOnepart(totalgenomes, begin, dchunk, false, clusterhit);
-            }
-            if ((long)refseqs.size()<dchunk) { break; }
+            (long) refseqs.size() < dchunk ? getClusteringInfoOnepart(totalgenomes, begin, (long)refseqs.size(), false, clusterhit) : getClusteringInfoOnepart(totalgenomes, begin, dchunk, false, clusterhit);
+            if ((long) refseqs.size() < dchunk) { break; }
             begin += dchunk;
             refseqs.clear();
         }
         delete saa;
         refseqs.clear();
         cbegin = cbegin + chunk;
-    }//end while(1)
+    }
     //testDistanceBgenomes(totalgenomes); 
-    // Collect clustering information
-    cerr <<"\n==========================="<< endl; 
-    cerr <<"Output clustering information ......\n"<< endl;
-    // Output with CD-HIT format
+    cerr << "\n==================\nOutput clustering information ......\n" << endl;
     outputClusteringInfoSimple(totalgenomes);
 }
 

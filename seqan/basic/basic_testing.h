@@ -256,7 +256,8 @@ const char *tempFileName() {
     // There is no mkstemp in MinGW but it does not complain about tmpnam.
     tmpnam(fileNameBuffer);
 #else  // ifdef PLATFORM_WINDOWS_MINGW
-    mkstemp(fileNameBuffer);
+    int testWarningMessage = mkstemp(fileNameBuffer);
+    ++testWarningMessage;
     unlink(fileNameBuffer);
 #endif  // #ifdef PLATFORM_WINDOWS_MINGW
     StaticData::tempFileNames().push_back(fileNameBuffer);

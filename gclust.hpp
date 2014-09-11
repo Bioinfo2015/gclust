@@ -37,71 +37,92 @@
 
 using namespace std;
 
-void usage(string prog);
+void usage( string prog );
+// Note: Using sparse suffix array for larger chunk size
+int K = 1;
+// load one time for remaining genomes clustering
+int Nchunk = 2; 
+// block size for clustering part by part
+int chunk = 100;
+// Default minimum exact match length
+int min_len = 20; 
+// Default identity cutoff
+int MEMiden = 90; 
+int total_threads = 1; 
 
-int K = 1; // Note: Using sparse suffix array for larger chunk size.
-int Nchunk = 2; // load one time for remaining genomes clustering.
-int chunk = 100; // block size for clustering part by part.
-int min_len = 20; // Default minimum exact match length.
-int MEMiden = 90; // Default identity cutoff.
-int total_threads = 1; // Threads number.
-
-// MEM extension parameters
-int ext = 1; // noextension, gap or ungap extension
-int mas = 1; // Match score
-int umas = -1; // Mismatch cost
-int gapo = -1; // Gap open penalty
-int gape = -1; // Gap extension penalty
-int drops = 1; // Maximum score drop
+// MEM extension parameters noextension, gap or ungap extension
+int ext = 1; 
+// Match score
+int mas = 1; 
+// Mismatch cost
+int umas = -1; 
+// Gap open and extension penalty
+int gape = -1;
+int gapo = -1; 
+// Maximum score drop
+int drops = 1; 
 
 bool rev_comp = false;
 bool nucleotides_only = true;
-bool rebuild = false; // Rebuild suffix array into one part.
-bool loadall = false; // load all genomes one time, need more memory.
-
-paraSA *sa, *saa; // Suffix array.
-
-vector< Genome > refseqs, allrefseqs; // Part genomes and total part genomes.
-vector< GenomeClustInfo > totalgenomes; // Total genomes.
-vector< vector<match_t> > matchlist; // Parallel buffer for match_t.
-vector< vector<mumi_unit> > mumilist; // parallel buffer for mumi_unit.
-
-//Multithreads parallel parameters passing
+// Rebuild suffix array into one part
+bool rebuild = false; 
+// load all genomes one time
+// ( need more memory )
+//
+bool loadall = false; 
+paraSA *sa, *saa;
+vector < Genome > refseqs, allrefseqs; 
+vector < GenomeClustInfo > totalgenomes; 
+// parallel buffer for match_t
+vector < vector <match_t> > matchlist; 
+// parallel buffer for mumi_unit
+vector < vector <mumi_unit> > mumilist;
+// multithreads parameters
+//
 struct threads_arg { 
+    threads_arg()
+        : skip(0)
+        , skip0(0)
+        , chunk(0)
+        , begin(0)
+        , part(false)
+    {
+        //xxxx
+    }
+    // Zebra-style distribution
     int skip;
-    int skip0; // Zebra-style distribution
+    int skip0; 
     long chunk;
-    long begin; // Begin alignment position
-    bool part; // If internal part clustering
+    long begin; 
+    bool part; 
 };
 
-// Note: just test distances between genomes.
-void testDistanceBgenomes(vector<GenomeClustInfo> &totalgenomes) {
-    for (long i=0; i<(long)totalgenomes.size(); i++) {
-        if (totalgenomes[i].clusters.size()>0) {
-            for (long j=0; j<(long)totalgenomes[i].clusters.size(); j++) {
+// Note: just test distances between genomes
+void testDistanceBgenomes( vector < GenomeClustInfo > &totalgenomes ) {
+    for ( long i = 0; i < (long) totalgenomes.size(); i++ ) {
+        if ( totalgenomes[i].clusters.size() > 0 ) {
+            for ( long j = 0; j < (long)totalgenomes[i].clusters.size(); j++ ) {
                 hit thit;
                 thit = totalgenomes[i].clusters[j];
-                cerr<<thit.id<<"\t"<<thit.identity<<endl;
+                cerr << thit.id << "\t" << thit.identity << endl;
             }
         }
     }
 }
 
-// Note: output clustering information as cd-hit format.
-void outputClusteringInfoSimple(vector<GenomeClustInfo> &totalgenomes) {
+// Note: output clustering information as cd-hit format
+void outputClusteringInfoSimple(vector <GenomeClustInfo> &totalgenomes) {
     long clusters = 0;
-    for (long i=0; i<(long)totalgenomes.size(); i++) {
+    for (long i = 0; i < (long) totalgenomes.size(); i++) {
         if (totalgenomes[i].rep) {
-            long clusterunit=0;
-            // Output representive.
+            long clusterunit = 0;
             cout << ">Cluster " << clusters << endl;
             cout << clusterunit
                  <<"\t" << totalgenomes[i].size
                  << "nt, >" << totalgenomes[i].descript 
                  << "... *" << endl;
-            if (totalgenomes[i].clusterunits.size()>0) {
-                for (long j=0;j<(long)totalgenomes[i].clusterunits.size();j++) {
+            if (totalgenomes[i].clusterunits.size() > 0) {
+                for (long j = 0; j < (long) totalgenomes[i].clusterunits.size(); j++) {
                     clusterunit++;
                     cout << clusterunit << "\t" 
                          << totalgenomes[totalgenomes[i].clusterunits[j].id].size<<"nt, >"
@@ -117,16 +138,16 @@ void outputClusteringInfoSimple(vector<GenomeClustInfo> &totalgenomes) {
     cerr << "Total clusters: " << clusters << endl;
 }
 
-// Note: collect clustering information.
-void getClusteringInfoOnepart(vector<GenomeClustInfo> &totalgenomes, long begin, long chunk, bool inpart, bool &clusterhit) {
-    long b,e;
+// Note: collect clustering information
+void getClusteringInfoOnepart( vector <GenomeClustInfo> &totalgenomes, long begin, long chunk, bool inpart, bool &clusterhit) {
+    long b, e;
     clusterhit = false;
     b = begin;
-    e = begin+chunk;
-    for (long i=b; i<e; i++) {
+    e = begin + chunk;
+    for (long i = b; i < e; i++) {
         if (!totalgenomes[i].rep){ continue; }
-        if (totalgenomes[i].clusters.size()>0) {
-            for (long j=0; j<(long)totalgenomes[i].clusters.size(); j++) {
+        if (totalgenomes[i].clusters.size() > 0) {
+            for (long j = 0; j < (long) totalgenomes[i].clusters.size(); j++) {
                 hit thit;
                 thit = totalgenomes[i].clusters[j];
                 if (totalgenomes[thit.id].rep) {
@@ -140,21 +161,19 @@ void getClusteringInfoOnepart(vector<GenomeClustInfo> &totalgenomes, long begin,
                     break;
                 }
             }
-            // Note: important clear
             totalgenomes[i].clusters.clear();
         }
     }
 }
 
-// Note: one genome as reference (internal part).
+// Note: one genome as reference (internal part)
 void *single_thread(void *arg_) {
     Genome tg;
     threads_arg *arg = (threads_arg *)arg_;
-    // Match information container.
-    vector<match_t> &matches = matchlist[arg->skip0];
-    // Mem index container.
-    vector<mumi_unit> &mumis = mumilist[arg->skip0];
-    
+    // Match information container
+    vector <match_t> &matches = matchlist[arg->skip0];
+    // Mem index container
+    vector <mumi_unit> &mumis = mumilist[arg->skip0];
     long seq_cnt = 0;
     long beginclust = arg->begin;
     long chunk = arg->chunk;
@@ -165,12 +184,9 @@ void *single_thread(void *arg_) {
     double cutoff=(double)MEMiden/100;
     string *P = new string; 
     edge = long(refseqs.size()-1);
-    
     while (1) {
         if ( seq_cnt > edge ) { break; }
-        if ( arg->skip0 == 0 ) {
-            if (seq_cnt % 100 ==0) { cerr <<"...... "<<seq_cnt<<" done"<< endl; }
-        }
+        if ( arg->skip0 == 0 ) { if (seq_cnt % 100 ==0) { cerr << "...... " << seq_cnt << " done" << endl; } }
         // paralle part
         if ( seq_cnt % arg->skip == arg->skip0 ) {
             ifhit = false;
@@ -180,29 +196,21 @@ void *single_thread(void *arg_) {
                 // Filter 'n'
                 if (nucleotides_only) { filter_n(*P); }
                 // 100% ?
-                if (MEMiden == 100) {
-                    saa->MEMperfect(*P, matches, tg.size, tg.id);
-                } else { saa->MEM(*P, matches, min_len, tg.id); }
+                MEMiden == 100 ? saa->MEMperfect(*P, matches, tg.size, tg.id) : saa->MEM(*P, matches, min_len, tg.id);
                 sizeadd += saa->load_match_info(tg.id, matches, mumis, true, tg.size);
                 matches.clear();
-                if ((double)sizeadd/tg.size >= cutoff) {
-                    ifhit = ComputeMemIdentity(totalgenomes, allrefseqs, mumis, beginclust, tg.id, MEMiden, ispart, chunk, '+', ext,  mas, umas, gapo, gape, drops);
-                }
+                if ((double)sizeadd/tg.size >= cutoff) { ifhit = ComputeMemIdentity(totalgenomes, allrefseqs, mumis, beginclust, tg.id, MEMiden, ispart, chunk, '+', ext,  mas, umas, gapo, gape, drops); }
                 mumis.clear();
                 sizeadd = 0;
                 if ((ispart) || (!ifhit)) {
-                    if(rev_comp) {
+                    if (rev_comp) {
                         reverse_complement(*P, nucleotides_only);
                         // 100% ?
-                        if (MEMiden == 100) {
-                            saa->MEMperfect(*P, matches, tg.size, tg.id);
-                        } else {  saa->MEM(*P, matches, min_len, tg.id); }
-                        // Loading match information - strand.
+                        MEMiden == 100 ? saa->MEMperfect(*P, matches, tg.size, tg.id) : saa->MEM(*P, matches, min_len, tg.id);
+                        // Loading match information - strand
                         sizeadd += saa->load_match_info(tg.id, matches, mumis, true, tg.size);
                         matches.clear();
-                        if ((double)sizeadd/tg.size >= cutoff) {
-                            ComputeMemIdentity(totalgenomes, allrefseqs, mumis, beginclust, tg.id, MEMiden, ispart, chunk, '-', ext, mas, umas, gapo, gape, drops);
-                        }
+                        if ((double)sizeadd/tg.size >= cutoff) { ComputeMemIdentity(totalgenomes, allrefseqs, mumis, beginclust, tg.id, MEMiden, ispart, chunk, '-', ext, mas, umas, gapo, gape, drops); }
                         sizeadd = 0;
                         mumis.clear();
                     }

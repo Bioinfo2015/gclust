@@ -79,7 +79,7 @@ void trim(string &line, long &start, long &end) {
     // Trim trailing spaces
     for (long i = line.length() - 1; i >= 0; i--) { 
         if (line[i] != ' ') { end = i; break; } 
-    if (i == 0) break;
+        if (i == 0) break;
     }
 }
 
@@ -94,17 +94,16 @@ void load_fasta(string filename, string &S, vector<string> &descr, vector<long> 
         cerr << "unable to open " << filename << endl; 
         exit(1); 
     } 
-    while ( !data.eof() ) {
-        getline(data, line); // Load one line at a time
+    while (!data.eof()) {
+        getline(data, line); 
         if (line.length() == 0) continue;
         long start = 0, end = line.length() - 1;
-        // Meta tag line and start of a new sequence
         if (line[0] == '>') {
-            // Save previous sequence and meta data
             if (length > 0) {
                 descr.push_back(meta);
                 //cout<<meta<<endl;
-                S += '`'; // ` character used to separate strings
+                // ` separate strings
+                S += '`'; 
                 startpos.push_back(S.length());
                 //lengths.push_back(length+1);
             }
@@ -125,20 +124,29 @@ void load_fasta(string filename, string &S, vector<string> &descr, vector<long> 
     }
     if (length > 0) { descr.push_back(meta); }  
     cerr << "# S.length=" << S.length() << endl;
-    for (long i = 0; i < (long)descr.size(); i++) { cerr << "# " << descr[i] << " " << startpos[i] << endl; }
+    for (long i = 0; i < (long)descr.size(); i++) { 
+        cerr << "# " << descr[i] << " " << startpos[i] << endl; 
+    }
+
 }
 
-// Load part genomes of total for clustering.
-// Previous genomes have been processed need to skip.
-void load_part_genomes(string filename, vector<Genome> &partgenomes, vector<GenomeClustInfo> &totalgenomes, long previous, long number) {
+// Load part genomes of total for clustering
+// Previous genomes have been processed need to skip
+void load_part_genomes(string filename, vector<Genome> &partgenomes, 
+                                        vector<GenomeClustInfo> &totalgenomes, 
+                                        long previous, 
+                                        long number) {
     string meta, line, S;
     long length = 0;
     Genome tg;
     ifstream data(filename.c_str());
-    if (!data.is_open()) {  cerr << "unable to open " << filename << endl; exit(1); }
+    if (!data.is_open()) { 
+        cerr << "unable to open " << filename << endl; 
+        exit(1); 
+    }
     // Skip previous genomes
-    long i=0;
-    while ( !data.eof() ) { 
+    long i = 0;
+    while (!data.eof()) { 
         getline(data, line);
         if (line[0] == '>') {
             i++;
@@ -146,7 +154,7 @@ void load_part_genomes(string filename, vector<Genome> &partgenomes, vector<Geno
         }
     }
     // Genome id from previous
-    long id = i-1; 
+    long id = i - 1; 
     long loadnum = 0;
     // First one sequence
     meta = "";
@@ -157,7 +165,7 @@ void load_part_genomes(string filename, vector<Genome> &partgenomes, vector<Geno
     }
     S = "";
     while (!data.eof()) {
-        getline(data, line); // Load one line at a time
+        getline(data, line); 
         if (line.length() == 0) continue;
         long start = 0, end = line.length() - 1;
         // Meta tag line and start of a new sequence
@@ -171,7 +179,6 @@ void load_part_genomes(string filename, vector<Genome> &partgenomes, vector<Geno
                 partgenomes.push_back(tg);
                 loadnum++;
                 S = "";
-                // Check genomes loaded one time.
                 if (loadnum >= number) { break; }
             }
             // Reset parser state
@@ -187,13 +194,15 @@ void load_part_genomes(string filename, vector<Genome> &partgenomes, vector<Geno
         } else { 
             // Collect sequence data
             length += end - start + 1;
-            for (long i = start; i <= end; i++) { S += std::tolower(line[i]); }
+            for (long i = start; i <= end; i++) { 
+                S += std::tolower(line[i]); 
+            }
         }
     }
     // last sequence
-    if (loadnum<number) {
+    if (loadnum < number) {
         if (length > 0) {
-            tg.descript=meta;
+            tg.descript = meta;
             tg.id = id++;
             tg.size = S.length();
             tg.cont = S;
@@ -205,26 +214,34 @@ void load_part_genomes(string filename, vector<Genome> &partgenomes, vector<Geno
 }
 
 // Load genomes from memory
-void load_part_genomes_mem(vector<Genome> &allpartgenomes, vector<Genome> &partgenomes, vector<GenomeClustInfo> &totalgenomes, long previous, long number) {
+void load_part_genomes_mem( vector <Genome> &allpartgenomes, 
+                            vector <Genome> &partgenomes, 
+                            vector <GenomeClustInfo> &totalgenomes, 
+                            long previous, 
+                            long number) {
     Genome tg;
     long loadnumber = 0;
     long genomes = allpartgenomes.size();
-    for (long i=previous; i<genomes; i++) { 
+    for (long i = previous; i < genomes; i++) { 
         tg = allpartgenomes[i];
         partgenomes.push_back(tg);
         loadnumber++;
-        if (loadnumber >= number) {
-            break;
-        }
+        if (loadnumber >= number) { break; }
     }
+
 }
 
-// Load genomes from file.
-void load_part_genomes_internal(string filename, vector<Genome> &partgenomes, vector<GenomeClustInfo> &totalgenomes, long previous, int &number, long totalsize, bool &ifend, int memiden) {
+// Load genomes from file
+void load_part_genomes_internal( string filename, vector <Genome> &partgenomes, 
+                                                  vector <GenomeClustInfo> &totalgenomes, 
+                                                  long previous, 
+                                                  int &number, 
+                                                  long totalsize, 
+                                                  bool &ifend, int memiden) {
     string meta, line, S;
     Genome tg;
     long length, loadgenomes, id, loadnumber, start, end, sizeadd, stablenumber;
-    length = loadgenomes=loadnumber=sizeadd=0;
+    length = loadgenomes = loadnumber = sizeadd = 0;
     if (memiden == 100) {
         stablenumber=MAX_PARTNUMBERFORPERFECT;
     } else {
@@ -239,15 +256,15 @@ void load_part_genomes_internal(string filename, vector<Genome> &partgenomes, ve
     }
     // Skip previous genomes
     long i = 0;
-    while( !data.eof() ) {
+    while(!data.eof()) {
         getline(data, line);
         if (line[0] == '>') {
             i++;
             if (i > previous) { break;}
         }
     }
-
-    id = i-1; // Genome id from previous
+    // Genome id from previous
+    id = i - 1; 
     // First sequence
     meta = "";
     start = 1; end = line.length() - 1;
@@ -257,10 +274,9 @@ void load_part_genomes_internal(string filename, vector<Genome> &partgenomes, ve
     }
     S = "";
     while( !data.eof() ) {
-        getline(data, line); // Load one line at a time
+        getline(data, line); 
         if (line.length() == 0) continue;
         start = 0; end = line.length() - 1;
-        // Meta tag line and start of a new sequence
         if (line[0] == '>') {
             // Save previous sequence and meta data
             if (length > 0) {
@@ -270,7 +286,7 @@ void load_part_genomes_internal(string filename, vector<Genome> &partgenomes, ve
                 tg.cont = S;
                 if (totalgenomes[tg.id].rep) {
                     sizeadd += tg.size;
-                    if ((sizeadd<=totalsize) && (loadgenomes<stablenumber)) {
+                    if ((sizeadd <= totalsize) && (loadgenomes < stablenumber)) {
                         partgenomes.push_back(tg);
                         loadnumber++;
                         loadgenomes++;
@@ -293,9 +309,11 @@ void load_part_genomes_internal(string filename, vector<Genome> &partgenomes, ve
                 if (line[i] == ' ') break; 
                 meta += line[i]; 
             }
-        } else { // Collect sequence data
+        } else { 
             length += end - start + 1;
-            for (long i = start; i <= end; i++) { S += std::tolower(line[i]); }
+            for (long i = start; i <= end; i++) { 
+                S += std::tolower(line[i]); 
+            }
         }
     }
     // The last one
@@ -315,23 +333,29 @@ void load_part_genomes_internal(string filename, vector<Genome> &partgenomes, ve
 }
 
 // Load genomes from memory
-void load_part_genomes_internal_mem(vector<Genome> &allpartgenomes, vector<Genome> &partgenomes, vector<GenomeClustInfo> &totalgenomes, long previous, int &number, long totalsize, bool &ifend, int memiden) {
+void load_part_genomes_internal_mem( vector <Genome> &allpartgenomes, 
+                                     vector <Genome> &partgenomes, 
+                                     vector <GenomeClustInfo> &totalgenomes, 
+                                     long previous, 
+                                     int &number, 
+                                     long totalsize, 
+                                     bool &ifend, int memiden) {
     Genome tg;
     long loadnumber, loadgenomes, genomes, sizeadd, stablenumber, i;
     loadnumber = loadgenomes = sizeadd = 0;
     genomes = allpartgenomes.size();
-    if (memiden==100) {
+    if (memiden == 100) {
         stablenumber=MAX_PARTNUMBERFORPERFECT;
     } else {
         stablenumber=MAX_PARTNUMBER;
     }
 
     ifend = false;
-    for (i=previous; i<genomes; i++) {
+    for (i = previous; i < genomes; i++) {
         tg = allpartgenomes[i];
         if (totalgenomes[tg.id].rep) {
             sizeadd += tg.size;
-            if ((sizeadd<=totalsize) && (loadgenomes<stablenumber)) {
+            if ((sizeadd <= totalsize) && (loadgenomes < stablenumber)) {
                 partgenomes.push_back(tg);
                 loadnumber++;
                 loadgenomes++;
@@ -376,10 +400,9 @@ void load_part_genomes_all( string filename, vector<Genome> &partgenomes ) {
     }
     S = "";
     while (!data.eof()) {
-        getline(data, line); // Load one line at a time
+        getline(data, line); 
         if (line.length() == 0) continue;
         long start = 0, end = line.length() - 1;
-        // Meta tag line and start of a new sequence
         if (line[0] == '>') {
             // Save previous sequence and meta data
             if (length > 0) {
@@ -403,7 +426,9 @@ void load_part_genomes_all( string filename, vector<Genome> &partgenomes ) {
             }
         } else { // Collect sequence data
             length += end - start + 1;
-            for (long i = start; i <= end; i++) { S += std::tolower(line[i]); }
+            for (long i = start; i <= end; i++) { 
+                S += std::tolower(line[i]); 
+            }
         }
     }
     // last sequence
@@ -419,28 +444,31 @@ void load_part_genomes_all( string filename, vector<Genome> &partgenomes ) {
 }
 
 //Test part genomes loading vector 
-void test_part(vector<Genome> &partgenomes) {
+void test_part(vector <Genome> &partgenomes) {
     Genome tg;
     int s = partgenomes.size();
-    for (int i=0; i<s; i++) {
+    for (int i = 0; i < s; i++) {
         tg = partgenomes[i];
-        cout <<"===========\n";
-        cout <<tg.descript<< endl;
-        cout <<tg.id<< endl;
-        cout <<tg.size<< endl;
-        cout <<tg.cont<< endl;
-        cout <<"===========\n";
+        cout << "===========\n";
+        cout << tg.descript << endl;
+        cout << tg.id << endl;
+        cout << tg.size << endl;
+        cout << tg.cont << endl;
+        cout << "===========\n";
     }
 }
 
 // Make one suffix array from one block
-void make_block_ref(vector<Genome> &partgenomes, string &S, vector<GenomeClustInfo> &totalgenomes, vector<long> &descr, vector<long> &startpos) {
+void make_block_ref( vector <Genome> &partgenomes, string &S, 
+                     vector <GenomeClustInfo> &totalgenomes, 
+                     vector <long> &descr, 
+                     vector <long> &startpos) {
     long pos = 0;
     Genome tg;
     long s = partgenomes.size();
     S = "";
     startpos.push_back(0);
-    for (long i=0; i<s; i++) {
+    for (long i = 0; i < s; i++) {
         tg = partgenomes[i];
         if (!totalgenomes[tg.id].rep){ continue; }
         S += tg.cont;
@@ -451,16 +479,16 @@ void make_block_ref(vector<Genome> &partgenomes, string &S, vector<GenomeClustIn
     }
     startpos.pop_back();
     int k = S.length(); 
-    S = S.substr(0,k-1);
-    cerr <<"\n===="<< endl;
-    cerr <<"S "<<S.length()<< endl;
-    cerr <<"startpos "<<startpos.size()<< endl;
-    cerr <<"descr "<< descr.size()<< endl;
-    cerr <<"====\n"<< endl;
+    S = S.substr(0, k-1);
+    cerr << "\n====" << endl;
+    cerr << "S " << S.length() << endl;
+    cerr << "startpos " << startpos.size() << endl;
+    cerr << "descr " << descr.size() << endl;
+    cerr << "====\n" << endl;
 }
 
 // Load total genomes one time
-void load_total_genomes(string filename, vector<GenomeClustInfo> &totalgenomes) {
+void load_total_genomes(string filename, vector <GenomeClustInfo> &totalgenomes) {
     long length, maxlen, totallen, minlen;
     length = maxlen = totallen = 0;
     minlen = MAX_GENOME;
@@ -474,12 +502,12 @@ void load_total_genomes(string filename, vector<GenomeClustInfo> &totalgenomes) 
         cerr << "unable to open " << filename << endl; 
         exit(1); 
     }
-    while( !data.eof() ) {
-        getline(data, line); // Load one line at a time
+    while(!data.eof()) {
+        getline(data, line); 
         if (line.length() == 0) continue;
         long start = 0, end = line.length() - 1;
-        if (line[0] == '>') { // Meta tag line and start of a new sequence
-            if (length > 0) { // Save previous sequence and meta data
+        if (line[0] == '>') { 
+            if (length > 0) { 
                 tg.descript = meta;
                 tg.id = id;
                 //tg.pid=id;
@@ -488,11 +516,11 @@ void load_total_genomes(string filename, vector<GenomeClustInfo> &totalgenomes) 
                 totallen += length;
                 totalgenomes.push_back(tg);
                 if (length > maxlen) { maxlen = length; }
-                if (length < minlen) { minlen=length; }
+                if (length < minlen) { minlen = length; }
                 id++;
                 loadnum++;
             }
-            start = 1; meta = ""; length = 0; // Reset parser state
+            start = 1; meta = ""; length = 0; 
         }
         trim(line, start, end);
         if (line[0] == '>') { // Collect meta data
@@ -517,12 +545,12 @@ void load_total_genomes(string filename, vector<GenomeClustInfo> &totalgenomes) 
         id++;
     }
 
-    cerr <<"=====================\n\n";
-    cerr <<"Genomes: "<<loadnum<< endl;
-    cerr <<"Maximum Length: "<<maxlen<< endl;
-    cerr <<"Minimum Length: "<<minlen<< endl;
-    cerr <<"Average Length: "<<totallen/loadnum<< endl;
-    cerr <<"\n";
-    cerr <<"=====================\n\n";
+    cerr << "=====================\n\n";
+    cerr << "Genomes: "<< loadnum << endl;
+    cerr << "Maximum Length: "<< maxlen << endl;
+    cerr << "Minimum Length: "<< minlen << endl;
+    cerr << "Average Length: "<< totallen/loadnum << endl;
+    cerr << "\n";
+    cerr << "=====================\n\n";
 }
 

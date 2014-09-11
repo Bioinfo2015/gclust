@@ -42,47 +42,77 @@ const long PART_BASE = 1000000; // 1MB
 
 // Clustering information
 struct hit {
+    hit()
+        : id(0)
+        , identity(0.0)
+        , strand('+')
+    {
+        //xxxx
+    }
     long id;
     double identity;
     char strand;
 };
 
-// For single genome search
+// Single genome search
 struct Genome {
-    long size; //genome length
-    long id; //index
-    string descript; // genome name
-    string cont; // genome content
+    Genome()
+        : size(0)
+        , id(0)
+        , descript("")
+        , cont("")
+    {
+        //xxxx    
+    }
+    long size;
+    long id;
+    string descript; 
+    string cont;
 };
 
 // Total genomes info container
 struct GenomeClustInfo {
-    long size; //genome length
-    long id; //index
-    bool rep; // if it is representive of clustering
-    double mumindex; //another index
-    string descript; //genome name
-    vector<hit> clusters, clusterunits;
+    GenomeClustInfo()
+        : size(0)
+        , id(0)
+        , rep(false)
+        , mumindex(0)
+        , descript("")
+    {
+        //xxxx
+    }
+    long size;
+    long id; 
+    bool rep; 
+    double mumindex; 
+    string descript;
+    vector <hit> clusters;
+    vector <hit> clusterunits;
 };
 
 void filter_n( string &seq_rc );
 // Reverse complement sequence
 void reverse_complement( string &seq_rc, bool nucleotides_only);
+
 // Trim sequence
-void trim( string &line, long &start, long &end );
-void load_fasta( string filename, string &S, vector<string> &descr, vector<long> &startpos );
-void load_part_genomes( string filename, vector<Genome> &partgenomes, vector<GenomeClustInfo> &totalgenomes, long previous, long number );
-void load_part_genomes_internal( string filename, vector<Genome> &partgenomes, vector<GenomeClustInfo> &totalgenomes, long previous, int &number, long totalsize, bool &ifend, int memiden );
-void load_part_genomes_all( string filename, vector<Genome> &partgenomes );
+void trim(string &line, long &start, long &end);
+void load_fasta(string filename, string &S, vector <string> &descr, vector <long> &startpos);
+void load_part_genomes(string filename, vector <Genome> &partgenomes, vector <GenomeClustInfo> &totalgenomes, long previous, long number );
+void load_part_genomes_internal(string filename, vector<Genome> &partgenomes, vector<GenomeClustInfo> &totalgenomes, long previous, int &number, long totalsize, bool &ifend, int memiden);
+void load_part_genomes_all(string filename, vector<Genome> &partgenomes);
+
 // Load part genomes into memory between parts
-void load_part_genomes_mem( vector<Genome> &allpartgenomes, vector<Genome> &partgenomes, vector<GenomeClustInfo> &totalgenomes, long previous, long number );
+void load_part_genomes_mem(vector <Genome> &allpartgenomes, vector <Genome> &partgenomes, vector <GenomeClustInfo> &totalgenomes, long previous, long number);
+
 // Load part genomes into memory
-void load_part_genomes_internal_mem( vector<Genome> &allpartgenomes, vector<Genome> &partgenomes, vector<GenomeClustInfo> &totalgenomes, long previous, int &number, long totalsize, bool &ifend, int memiden );
-void test_part( vector<Genome> &partgenomes );
+void load_part_genomes_internal_mem(vector <Genome> &allpartgenomes, vector <Genome> &partgenomes, vector <GenomeClustInfo> &totalgenomes, long previous, int &number, long totalsize, bool &ifend, int memiden);
+void test_part(vector <Genome> &partgenomes);
+
 // Make block for Suffix Array construction
-void make_block_ref( vector<Genome> &partgenomes, string &S, vector<GenomeClustInfo> &totalgenomes, vector<long> &descr, vector<long> &startpos );
+void make_block_ref(vector <Genome> &partgenomes, string &S, vector <GenomeClustInfo> &totalgenomes, vector <long> &descr, vector <long> &startpos);
+
 // Load total genomes
-void load_total_genomes( string filename, vector<GenomeClustInfo> &totalgenomes );
+void load_total_genomes(string filename, vector <GenomeClustInfo> &totalgenomes);
 
 #endif // __FASTA_HPP__
 
