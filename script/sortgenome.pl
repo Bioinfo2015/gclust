@@ -10,38 +10,15 @@ use IO::File;
 use Getopt::Long;
 
 my ( $gf, $sgf, $help, $options, );
-$options = GetOptions(
-    'genomes-file=s' => \$gf,
-    'sortedgenomes-file=s' => \$sgf,
-    'help' => \$help,
-);
+$options = GetOptions( 'genomes-file=s' => \$gf, 'sortedgenomes-file=s' => \$sgf, 'help' => \$help, );
 unless( $options ) { die help_text(); } 
 if ($help) { print STDOUT help_text(); exit 0; }
-unless( $gf ) {
-    warn "You must provide a genomes file to be sorted ! \n";
-    die help_text();
-}
-
+unless( $gf ) { warn "You must provide a genomes file to be sorted ! \n"; die help_text(); }
 my $gfr = IO::File->new($gf) or die "can not open this file ! \n";
 # reading input genomes file
 my ( $i, $t, @genome, $name, $len, $str, $ll , );
 $i = $t = 0;
-while ($ll = <$gfr>) {
-    if ($ll =~ /^>/) {
-        if ($i > 0) {
-            #$len=length($str);
-            #print $name."\n";
-            push( @genome, [$name,$len,$str] );
-            $str = ""; $len = 0;
-        }
-        $name = $ll;
-        $i++;
-    } else {
-        $t = length($ll) - 1;
-        $str .= $ll;
-        $len += $t;
-    }
-}
+map{ if (/^>/) { if ($i > 0) { push( @genome, [$name,$len,$str] ); $str = ""; $len = 0; } $name = $_; $i++; } else { $t = length($_) - 1; $str .= $_; $len += $t; } } <$gfr>;
 push( @genome,[$name,$len,$str] );
 undef $gfr;
 my $genomenum = @genome;
