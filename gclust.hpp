@@ -32,6 +32,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include <cctype>
+#include <map>
 #include "fasta.hpp"
 #include "paraSA.hpp"
 
@@ -69,7 +70,16 @@ bool rebuild = false;
 // load all genomes one time
 // ( need more memory )
 //
-bool loadall = false; 
+bool loadall = false;
+
+// maping between local id 
+// and global id 
+map< long, long > local_global_map;
+
+// mymap[1]=100;
+// mymap[2]=200;
+// mymap[3]=300;
+
 paraSA *sa, *saa;
 vector < Genome > refseqs, allrefseqs; 
 vector < GenomeClustInfo > totalgenomes; 
@@ -199,7 +209,9 @@ void *single_thread(void *arg_) {
                 MEMiden == 100 ? saa->MEMperfect(*P, matches, tg.size, tg.id) : saa->MEM(*P, matches, min_len, tg.id);
                 sizeadd += saa->load_match_info(tg.id, matches, mumis, true, tg.size);
                 matches.clear();
-                if ((double)sizeadd/tg.size >= cutoff) { ifhit = ComputeMemIdentity(totalgenomes, allrefseqs, mumis, beginclust, tg.id, MEMiden, ispart, chunk, '+', ext,  mas, umas, gapo, gape, drops); }
+                if ((double)sizeadd/tg.size >= cutoff) { 
+                    ifhit = ComputeMemIdentity(totalgenomes, allrefseqs, mumis, beginclust, tg.id, MEMiden, ispart, chunk, '+', ext,  mas, umas, gapo, gape, drops);
+                }
                 mumis.clear();
                 sizeadd = 0;
                 if ((ispart) || (!ifhit)) {

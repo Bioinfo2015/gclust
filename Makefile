@@ -1,5 +1,6 @@
 #FLAGS = -I./ -O3 -pg
-FLAGS = -I ./ -O3 -DHAVE_CONFIG_H=1 
+#FLAGS = -I./ -O3 -g
+FLAGS = -I ./ -O3 -g -DHAVE_CONFIG_H=1 
 SRC = gclust.cpp paraSA.cpp fasta.cpp divsufsort.c sssort.c trsort.c
 
 all: gclust 

@@ -64,7 +64,7 @@ void reverse_complement( string &seq_rc, bool nucleotides_only ) {
             case 'h': seq_rc[i] = 'd'; break; /* a, c or t */
             case 'v': seq_rc[i] = 'b'; break; /* a, c or g */
             default:  
-                      if(!nucleotides_only) seq_rc[i] = 'n'; 
+                      if (!nucleotides_only) seq_rc[i] = 'n'; 
                       break; /* anything */
         }
     }
